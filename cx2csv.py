@@ -49,9 +49,7 @@ args = parser.parse_args()
 infile = pathConvert(args.exportXliff)
 
 replaceData = []
-print(args)
 if args.replace:
-    print(args.replace)
     if args.replace == "NOFILE":
         repfile = pathConvert(args.exportXliff).replace(".xliff", ".csv")
     else:
@@ -64,24 +62,37 @@ tree = etree.parse(infile)
 root = tree.getroot()
 mynsmap = dict()
 mynsmap['x'] = root.nsmap[None]
-body = tree.xpath("//x:body/*", namespaces=mynsmap)
+files = tree.xpath("//x:*/*", namespaces=mynsmap)
+fileid = ""
 outcsv = []
-outcsv.append(["id",  "context",  "source", "target"])
-for b in body:
-    id = b.attrib['id']
-    try:
-        resname = b.attrib['resname']
-    except KeyError:
+outcsv.append(["url", "id", "state", "context",  "source", "target"])
+for f in files:
+    tag = f.tag.rsplit("}")[1]
+    if tag == "file":
+        fileid = ("/" + f.attrib['id'] + "/" + f.attrib['source-language'] +
+                  "-" + f.attrib['target-language'] + "#")
         continue
-    for t in b:
-        tag = t.tag.rsplit("}")[1]
-        if tag == "source":
-            source = t.text
-        if tag == "target":
-            target = t.text
-            if args.replace:
-                t.text = getTarget(replaceData, id)
-    outcsv.append([id, resname, source, target])
+    if tag == "trans-unit":
+        try:
+            resname = f.attrib['resname']
+        except KeyError:
+            continue
+        tuid = f.attrib['id']
+    if tag == "source":
+        source = f.text
+        continue
+    if tag == "target":
+        try:
+            state = f.attrib['state']
+        except KeyError:
+            continue
+        if state == "needs-translation":
+            target = ""
+        else:
+            target = f.text
+        if args.replace:
+            f.text = getTarget(replaceData, tuid)
+        outcsv.append([fileid+tuid, tuid, state, resname, source, target])
 
 outfile = pathConvert(args.exportXliff).replace('.xliff', '.csv')
 with open(outfile, 'w', encoding='UTF-8') as f:
