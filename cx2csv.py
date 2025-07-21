@@ -91,7 +91,10 @@ for f in files:
         else:
             target = f.text
         if args.replace:
-            f.text = getTarget(replaceData, tuid)
+          new_text = getTarget(replaceData, tuid)
+          if new_text is not None:
+            f.text = new_text
+            f.attrib['state'] = "translated"
         outcsv.append([fileid+tuid, tuid, state, resname, source, target])
 
 outfile = pathConvert(args.exportXliff).replace('.xliff', '.csv')
